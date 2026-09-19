@@ -1,14 +1,16 @@
 "use client";
 
-import React from "react";
-import { Student, AttendanceStatus } from "@/lib/types/student";
+import React, { useMemo } from "react";
+import { Student, AttendanceStatus, StudentAttendanceStats } from "@/lib/types/student";
 import { StudentCard } from "@/components/StudentCard";
+import { getAllStudentsOverallStats } from "@/lib/services/attendanceStorage";
 
 interface StudentListProps {
   students: Student[];
   searchQuery: string;
   dateAttendance: Record<string, AttendanceStatus>;
   selectedDate: string;
+  allAttendance: Record<string, Record<string, AttendanceStatus>>;
   onMarkPresent: (id: string) => void;
   onMarkAbsent: (id: string) => void;
   onEditStudent: (student: Student) => void;
@@ -22,6 +24,7 @@ export function StudentList({
   searchQuery,
   dateAttendance,
   selectedDate,
+  allAttendance,
   onMarkPresent,
   onMarkAbsent,
   onEditStudent,
@@ -37,6 +40,12 @@ export function StudentList({
       student.pin.toLowerCase().includes(q)
     );
   });
+
+  // Calculate overall stats for all students
+  const overallStatsMap = useMemo(
+    () => getAllStudentsOverallStats(students, allAttendance),
+    [students, allAttendance]
+  );
 
   const formatDisplayDate = (dateStr: string): string => {
     try {
@@ -84,17 +93,21 @@ export function StudentList({
         </div>
       ) : (
         <div className="space-y-3">
-          {filteredStudents.map((student) => (
-            <StudentCard
-              key={student.id}
-              student={student}
-              status={dateAttendance[student.id] ?? "unmarked"}
-              onMarkPresent={onMarkPresent}
-              onMarkAbsent={onMarkAbsent}
-              onEdit={onEditStudent}
-              onDelete={onDeleteStudent}
-            />
-          ))}
+          {filteredStudents.map((student) => {
+            const overallStats = overallStatsMap.get(student.id);
+            return (
+              <StudentCard
+                key={student.id}
+                student={student}
+                status={dateAttendance[student.id] ?? "unmarked"}
+                overallStats={overallStats}
+                onMarkPresent={onMarkPresent}
+                onMarkAbsent={onMarkAbsent}
+                onEdit={onEditStudent}
+                onDelete={onDeleteStudent}
+              />
+            );
+          })}
         </div>
       )}
 

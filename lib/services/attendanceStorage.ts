@@ -108,3 +108,45 @@ export function isPinDuplicate(
     (s) => s.pin.trim().toUpperCase() === normalizedPin && s.id !== excludeStudentId
   );
 }
+
+// ─── Overall Attendance Percentage ───────────────────────────────────────────────
+
+export interface StudentAttendanceStats {
+  totalMarked: number;
+  present: number;
+  absent: number;
+  percentage: number;
+}
+
+export function getStudentOverallStats(
+  studentId: string,
+  allAttendance: DateAttendanceMap
+): StudentAttendanceStats {
+  let totalMarked = 0;
+  let present = 0;
+  let absent = 0;
+
+  Object.values(allAttendance).forEach((dateRecord) => {
+    const status = dateRecord[studentId];
+    if (status === "present" || status === "absent") {
+      totalMarked++;
+      if (status === "present") present++;
+      else absent++;
+    }
+  });
+
+  const percentage = totalMarked > 0 ? Math.round((present / totalMarked) * 100) : 0;
+
+  return { totalMarked, present, absent, percentage };
+}
+
+export function getAllStudentsOverallStats(
+  students: Student[],
+  allAttendance: DateAttendanceMap
+): Map<string, StudentAttendanceStats> {
+  const statsMap = new Map<string, StudentAttendanceStats>();
+  students.forEach((student) => {
+    statsMap.set(student.id, getStudentOverallStats(student.id, allAttendance));
+  });
+  return statsMap;
+}

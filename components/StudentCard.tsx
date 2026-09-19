@@ -1,20 +1,28 @@
 "use client";
 
 import React from "react";
-import { Student, AttendanceStatus } from "@/lib/types/student";
+import { Student, AttendanceStatus, StudentAttendanceStats } from "@/lib/types/student";
 
 interface StudentCardProps {
   student: Student;
   status: AttendanceStatus;
+  overallStats?: StudentAttendanceStats;
   onMarkPresent: (id: string) => void;
   onMarkAbsent: (id: string) => void;
   onEdit: (student: Student) => void;
   onDelete: (student: Student) => void;
 }
 
+function getPercentageColor(percentage: number): string {
+  if (percentage >= 75) return "text-green-600 bg-green-100";
+  if (percentage >= 50) return "text-amber-600 bg-amber-100";
+  return "text-red-600 bg-red-100";
+}
+
 export function StudentCard({
   student,
   status,
+  overallStats,
   onMarkPresent,
   onMarkAbsent,
   onEdit,
@@ -24,12 +32,34 @@ export function StudentCard({
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-gray-300">
       {/* Student Info */}
       <div className="min-w-0 flex-1">
-        <h3 className="text-base font-bold text-gray-800 leading-snug truncate">
-          {student.name}
-        </h3>
-        <p className="font-mono text-sm text-gray-500 mt-0.5 tracking-wide">
-          PIN:&nbsp;{student.pin}
-        </p>
+        <div className="flex items-center gap-3 flex-wrap">
+          <h3 className="text-base font-bold text-gray-800 leading-snug truncate">
+            {student.name}
+          </h3>
+          <span className="font-mono text-sm text-gray-500 tracking-wide whitespace-nowrap">
+            PIN: {student.pin}
+          </span>
+
+          {/* Overall Attendance Percentage */}
+          {overallStats && overallStats.totalMarked > 0 && (
+            <span
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${getPercentageColor(
+                overallStats.percentage
+              )}`}
+              title={`${overallStats.present}/${overallStats.totalMarked} days present`}
+            >
+              <span className="font-mono">{overallStats.percentage}%</span>
+              <span className="text-[10px] opacity-75">Overall</span>
+            </span>
+          )}
+
+          {overallStats && overallStats.totalMarked === 0 && (
+            <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-400">
+              No data
+            </span>
+          )}
+        </div>
+
         {/* Mobile-visible status badge */}
         {status !== "unmarked" && (
           <span

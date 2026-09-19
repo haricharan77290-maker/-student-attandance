@@ -247,6 +247,7 @@ export default function PersonToPersonAttendancePage() {
           searchQuery={searchQuery}
           dateAttendance={dateAttendance}
           selectedDate={selectedDate}
+          allAttendance={allAttendance}
           onMarkPresent={handleMarkPresent}
           onMarkAbsent={handleMarkAbsent}
           onEditStudent={handleOpenEdit}

@@ -21,3 +21,10 @@ export interface ToastNotification {
   message: string;
   type: "success" | "error" | "warning" | "info";
 }
+
+export interface StudentAttendanceStats {
+  totalMarked: number;
+  present: number;
+  absent: number;
+  percentage: number;
+}
