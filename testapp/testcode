@@ -1,0 +1,295 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+
+type Student = {
+  id: number;
+  name: string;
+  roll_no: string;
+};
+
+type Attendance = {
+  student_id: number;
+  status: string;
+};
+
+export default function Home() {
+  const [students, setStudents] = useState<Student[]>([]);
+  const [attendance, setAttendance] = useState<
+    Record<number, string>
+  >({});
+
+  const [date, setDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+
+  // Load students
+  useEffect(() => {
+    fetchStudents();
+  }, []);
+
+  // Load attendance whenever date changes
+  useEffect(() => {
+    if (students.length > 0) {
+      fetchAttendance();
+    }
+  }, [date, students]);
+
+  async function fetchStudents() {
+    setLoading(true);
+
+    const { data, error } = await supabase
+      .from("students")
+      .select("*")
+      .order("roll_no");
+
+    if (error) {
+      console.error(error);
+      setMessage("Error loading students");
+    } else {
+      setStudents(data || []);
+    }
+
+    setLoading(false);
+  }
+
+  async function fetchAttendance() {
+    const { data, error } = await supabase
+      .from("attendance")
+      .select("student_id, status")
+      .eq("date", date);
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    const attendanceMap: Record<number, string> = {};
+
+    (data as Attendance[]).forEach((item) => {
+      attendanceMap[item.student_id] = item.status;
+    });
+
+    setAttendance(attendanceMap);
+  }
+
+  function markAttendance(
+    studentId: number,
+    status: string
+  ) {
+    setAttendance((previous) => ({
+      ...previous,
+      [studentId]: status,
+    }));
+  }
+
+  async function saveAttendance() {
+    setSaving(true);
+    setMessage("");
+
+    const records = students.map((student) => ({
+      student_id: student.id,
+      date: date,
+      status: attendance[student.id] || "Absent",
+    }));
+
+    // Remove existing attendance for this date
+    const { error: deleteError } = await supabase
+      .from("attendance")
+      .delete()
+      .eq("date", date);
+
+    if (deleteError) {
+      console.error(deleteError);
+      setMessage("Error updating attendance");
+      setSaving(false);
+      return;
+    }
+
+    // Insert new attendance
+    const { error: insertError } = await supabase
+      .from("attendance")
+      .insert(records);
+
+    if (insertError) {
+      console.error(insertError);
+      setMessage("Error saving attendance");
+    } else {
+      setMessage("Attendance saved successfully ✅");
+    }
+
+    setSaving(false);
+  }
+
+  const presentCount = students.filter(
+    (student) => attendance[student.id] === "Present"
+  ).length;
+
+  const absentCount = students.length - presentCount;
+
+  return (
+    <main className="min-h-screen bg-gray-100 p-4">
+      <div className="mx-auto max-w-4xl">
+
+        {/* Header */}
+        <div className="mb-6 rounded-2xl bg-white p-6 shadow">
+          <h1 className="text-3xl font-bold text-gray-800">
+            Student Attendance
+          </h1>
+
+          <p className="mt-1 text-gray-500">
+            Teacher Attendance Management
+          </p>
+
+          {/* Date */}
+          <div className="mt-5">
+            <label className="mb-2 block font-semibold text-gray-700">
+              Select Date
+            </label>
+
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="rounded-lg border border-gray-300 p-3"
+            />
+          </div>
+        </div>
+
+        {/* Statistics */}
+        <div className="mb-6 grid grid-cols-3 gap-3">
+
+          <div className="rounded-xl bg-white p-4 text-center shadow">
+            <p className="text-sm text-gray-500">
+              Total
+            </p>
+
+            <p className="text-2xl font-bold">
+              {students.length}
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-green-100 p-4 text-center">
+            <p className="text-sm text-green-700">
+              Present
+            </p>
+
+            <p className="text-2xl font-bold text-green-700">
+              {presentCount}
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-red-100 p-4 text-center">
+            <p className="text-sm text-red-700">
+              Absent
+            </p>
+
+            <p className="text-2xl font-bold text-red-700">
+              {absentCount}
+            </p>
+          </div>
+
+        </div>
+
+        {/* Student List */}
+        <div className="rounded-2xl bg-white p-4 shadow">
+
+          <h2 className="mb-4 text-xl font-bold">
+            Students
+          </h2>
+
+          {loading ? (
+            <p className="py-8 text-center">
+              Loading students...
+            </p>
+          ) : students.length === 0 ? (
+            <p className="py-8 text-center text-gray-500">
+              No students found.
+            </p>
+          ) : (
+            <div className="space-y-3">
+
+              {students.map((student) => (
+                <div
+                  key={student.id}
+                  className="flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+
+                  {/* Student information */}
+                  <div>
+                    <p className="font-semibold text-gray-800">
+                      {student.name}
+                    </p>
+
+                    <p className="text-sm text-gray-500">
+                      Roll No: {student.roll_no}
+                    </p>
+                  </div>
+
+                  {/* Buttons */}
+                  <div className="flex gap-2">
+
+                    <button
+                      onClick={() =>
+                        markAttendance(student.id, "Present")
+                      }
+                      className={`rounded-lg px-4 py-2 font-semibold ${
+                        attendance[student.id] === "Present"
+                          ? "bg-green-600 text-white"
+                          : "bg-green-100 text-green-700"
+                      }`}
+                    >
+                      Present
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        markAttendance(student.id, "Absent")
+                      }
+                      className={`rounded-lg px-4 py-2 font-semibold ${
+                        attendance[student.id] === "Absent"
+                          ? "bg-red-600 text-white"
+                          : "bg-red-100 text-red-700"
+                      }`}
+                    >
+                      Absent
+                    </button>
+
+                  </div>
+
+                </div>
+              ))}
+
+            </div>
+          )}
+
+          {/* Save */}
+          {students.length > 0 && (
+            <button
+              onClick={saveAttendance}
+              disabled={saving}
+              className="mt-6 w-full rounded-xl bg-blue-600 py-3 font-bold text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {saving
+                ? "Saving..."
+                : "Save Attendance"}
+            </button>
+          )}
+
+          {/* Message */}
+          {message && (
+            <p className="mt-4 text-center font-semibold">
+              {message}
+            </p>
+          )}
+
+        </div>
+      </div>
+    </main>
+  );
+}
